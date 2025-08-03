@@ -5,8 +5,7 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
       -webkit-user-select: none;
       -moz-user-select: none;
       -ms-user-select: none;
@@ -34,7 +33,7 @@
       color: #2e8b57;
       user-select: none;
     }
-    .timer {
+    .timer, #startCountdown {
       font-size: 1.5em;
       font-weight: bold;
       color: #b22222;
@@ -82,14 +81,16 @@
       padding-left: 20px;
       user-select: none;
     }
-    #tabSwitchWarning {
-      font-weight: bold;
+    #tabSwitchWarning, #deviceNotice, #inputError {
       color: #d2691e;
+      font-weight: bold;
       margin-top: 15px;
       user-select: none;
     }
-    input[type="text"],
-    input[type="email"] {
+    #deviceNotice {
+      margin-top: 20px;
+    }
+    input[type="text"], input[type="email"] {
       width: 100%;
       padding: 8px;
       box-sizing: border-box;
@@ -103,29 +104,41 @@
   <div class="center-screen" id="introScreen">
     <h1>Welcome to the Global Warming Quiz</h1>
     <p>You are about to take a quiz on <b>global warming</b>.</p>
-    <p>
-      <b>Rules:</b>
-      <ul>
-        <li>You will have <b>4 minutes</b> to complete 10 questions.</li>
-        <li>The quiz will begin in fullscreen mode to ensure fairness.</li>
-        <li><b>If you exit fullscreen at any time, the quiz will be automatically submitted immediately.</b></li>
-        <li><b>Tab switching is strictly prohibited.</b> If you switch tabs or change the browser window, the quiz will be automatically submitted.</li>
-        <li><b>Copying of quiz content is disabled.</b></li>
-        <li><b>Inspecting or altering the page source is not allowed.</b></li>
-      </ul>
-    </p>
+
+    <p><b>Rules:</b></p>
+    <ul>
+      <li>You will have <b>4 minutes</b> to complete 10 questions.</li>
+      <li>The quiz will begin in fullscreen mode to ensure fairness.</li>
+      <li><b>If you exit fullscreen at any time, the quiz will be automatically submitted immediately.</b></li>
+      <li><b>Tab switching is strictly prohibited.</b> If you switch tabs or change the browser window, the quiz will be submitted.</li>
+      <li><b>Copying of quiz content is disabled.</b></li>
+      <li><b>Inspecting or altering the page source is not allowed.</b></li>
+    </ul>
+
     <p id="tabSwitchWarning">
       ⚠️ This quiz is protected against cheating. Please remain on this tab and stay in fullscreen mode until you finish the quiz.
     </p>
 
+    <!-- Countdown to quiz start -->
+    <div id="startCountdown">
+      Quiz starts in: calculating...
+    </div>
+
+    <!-- Device notice -->
+    <div id="deviceNotice">
+      ⚠️ This quiz can only be attempted on a laptop or desktop PC.
+    </div>
+
     <!-- Input fields for name and email -->
     <div style="margin-top: 20px; text-align: left; max-width: 400px; width: 100%;">
-      <label for="userName" style="font-weight: bold;">Name:</label><br>
-      <input type="text" id="userName" name="userName" placeholder="Enter your full name" autocomplete="off" /><br />
-      <label for="userEmail" style="font-weight: bold;">Email Address:</label><br>
+      <label for="userName" style="font-weight: bold;">Name:</label><br/>
+      <input type="text" id="userName" name="userName" placeholder="Enter your full name" autocomplete="off" /><br/>
+      <label for="userEmail" style="font-weight: bold;">Email Address:</label><br/>
       <input type="email" id="userEmail" name="userEmail" placeholder="Enter your email address" autocomplete="off" />
     </div>
-    <div id="inputError" style="color: #d2691e; font-weight: bold; margin-bottom: 10px; display: none;"></div>
+
+    <div id="inputError" style="display:none;"></div>
+
     <button id="startBtn" onclick="startQuiz()">Start Quiz</button>
   </div>
 
@@ -220,9 +233,55 @@
   </div>
 
 <script>
-  let timer = 240; // seconds
+  let timer = 240; // seconds - quiz duration timer
   let timerInterval;
   let quizSubmitted = false;
+  let quizStarted = false; // flag for scheduled auto start
+
+  // Scheduled start time: Sunday 3 August 2025 22:40 IST = 17:10 UTC
+  // Note: Month is zero-based (7 = August)
+  const quizStartUTC = Date.UTC(2025, 7, 3, 17, 10, 0);
+
+  // Device check: returns true if desktop/laptop, false for mobile/tablet
+  function isDesktopUser() {
+    const ua = navigator.userAgent.toLowerCase();
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(ua);
+    const isTablet = /tablet|ipad/.test(ua);
+    return !(isMobile || isTablet);
+  }
+
+  // Update countdown until quiz start
+  function updateStartCountdown() {
+    const now = new Date().getTime();
+    const distance = quizStartUTC - now;
+    const countdownEl = document.getElementById("startCountdown");
+    const startBtn = document.getElementById("startBtn");
+    const inputError = document.getElementById("inputError");
+
+    if(distance > 0) {
+      startBtn.disabled = true;
+      inputError.style.display = "none";
+
+      // Calculate time components
+      const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+      countdownEl.textContent = `Quiz starts in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+
+    } else {
+      countdownEl.textContent = "Quiz is now available!";
+      startBtn.disabled = false;
+
+      // If quiz not started, optionally auto-start
+      if(!quizStarted) {
+        quizStarted = true;
+        // You can comment out the next line if you want user to click Start button manually
+        // startQuiz();
+      }
+    }
+  }
 
   // Disable right-click anywhere
   document.addEventListener('contextmenu', e => { e.preventDefault(); return false; });
@@ -273,14 +332,6 @@
     }
   });
 
-  // Device check: returns true if device is desktop/laptop, false for mobile/tablet
-  function isDesktopUser() {
-    const ua = navigator.userAgent.toLowerCase();
-    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(ua);
-    const isTablet = /tablet|ipad/.test(ua);
-    return !(isMobile || isTablet);
-  }
-
   function startQuiz() {
     const nameInput = document.getElementById('userName').value.trim();
     const emailInput = document.getElementById('userEmail').value.trim();
@@ -289,6 +340,13 @@
     // Device check
     if (!isDesktopUser()) {
       errorDiv.textContent = "Please use a laptop or desktop PC to attempt this quiz.";
+      errorDiv.style.display = "block";
+      return;
+    }
+
+    // Check time if quiz start time has passed
+    if (new Date().getTime() < quizStartUTC) {
+      errorDiv.textContent = "The quiz has not started yet. Please wait for the scheduled time.";
       errorDiv.style.display = "block";
       return;
     }
@@ -311,6 +369,7 @@
     }
 
     errorDiv.style.display = "none";
+
     document.getElementById('introScreen').style.display = 'none';
     document.getElementById('quizContainer').style.display = 'block';
 
@@ -347,7 +406,7 @@
     const endpoint = "https://api.web3forms.com/submit";
 
     const data = {
-      access_key: "f865382d-acee-4a3a-a8d7-3246c243f489",  // <-- REPLACE this with your Web3Forms access key
+      access_key: "f865382d-acee-4a3a-a8d7-3246c243f489",  // <-- REPLACE with your Web3Forms access key
       name: name,
       email: email,
       score: score
@@ -441,15 +500,20 @@
     sendToWeb3Forms(name, email, score);
 
     if (auto && !allAnswered) {
-      document.getElementById('result').textContent = "Time's up or quiz submitted early! You scored " + score + " out of 10.";
+      document.getElementById('result').textContent =
+        "Time's up or quiz submitted early! You scored " + score + " out of 10.";
     } else {
       document.getElementById('result').textContent = "You scored " + score + " out of 10.";
     }
   }
 
+  // Update intro countdown every 1 second
+  setInterval(updateStartCountdown, 1000);
+
   window.onload = function() {
     document.getElementById('quizContainer').style.display = 'none';
     document.getElementById('introScreen').style.display = 'flex';
+    updateStartCountdown(); // initial call to show countdown immediately
   };
 </script>
 </body>
